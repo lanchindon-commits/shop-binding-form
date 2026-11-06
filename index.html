@@ -127,15 +127,15 @@ fieldset { border: 0; padding: 0; margin: 0; display: grid; gap: 8px; min-width:
     </fieldset>
 
     <p id="formErr" class="formerr" hidden></p>
-    <button type="submit" id="submitBtn" class="submit">送出綁定</button>
+    <button type="submit" id="submitBtn" class="submit">送出資料</button>
   </form>
 
   <section id="done" class="done" hidden>
     <div class="ok" aria-hidden="true">
       <svg width="34" height="34" viewBox="0 0 34 34"><path d="M8 17.5l6 6 12-13" fill="none" stroke="#04210F" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </div>
-    <h2>綁定完成</h2>
-    <p>資料已送出，我會依你填的時間聯絡你。</p>
+    <h2>資料已送出</h2>
+    <p>我們已收到你的資料，會盡快與你聯繫。</p>
     <button type="button" id="closeBtn" class="submit">關閉視窗</button>
   </section>
 </main>
@@ -143,15 +143,12 @@ fieldset { border: 0; padding: 0; margin: 0; display: grid; gap: 8px; min-width:
 <script>
 /* ============ 設定區：做好 LIFF 與 Supabase 後，只要改這裡 ============ */
 var CONFIG = {
-  LIFF_ID: "2012415109-bXC049QQ",                 // LINE Developers 的 LIFF ID
-  SUPABASE_URL: "",                        // 例：https://xxxx.supabase.co （留空 = 測試模式，不會送出資料）
-  SUPABASE_ANON_KEY: "",                   // 只放 anon（publishable）key，絕對不要放 service_role key
-  TABLE: "shop_bindings"                   // 要寫入的資料表名稱
+  LIFF_ID: "2012415109-bXC049QQ",   // LINE Developers 的 LIFF ID
+  ENDPOINT: "https://hxzdmosganinyhtrswlj.supabase.co/functions/v1/shop-form-submit"  // 資料接收端（Supabase Edge Function）
 };
 /* ===================================================================== */
 
 var profile = { userId: "", displayName: "" };
-var testMode = !CONFIG.SUPABASE_URL || !CONFIG.SUPABASE_ANON_KEY;
 var previewMode = CONFIG.LIFF_ID === "YOUR_LIFF_ID";
 
 function $(id) { return document.getElementById(id); }
@@ -177,7 +174,6 @@ async function start() {
     $("formErr").textContent = "LINE 登入失敗，請從官方 LINE 的訊息重新開啟表單。";
     $("formErr").hidden = false;
   }
-  if (testMode) showNotice($("testNotice"), "測試模式：尚未設定 Supabase，送出的資料不會儲存。");
 }
 
 function setErr(name, msg) {
@@ -213,9 +209,9 @@ function validate(d) {
 }
 
 async function save(d) {
-  var row = {
-    line_user_id: profile.userId,
-    line_display_name: profile.displayName,
+  if (previewMode) { console.log("[預覽模式] 不送出", d); return; }
+  var payload = {
+    access_token: liff.getAccessToken(),
     shop_name: d.shop_name,
     contact_name: d.contact_name,
     mobile: d.mobile,
@@ -224,16 +220,10 @@ async function save(d) {
     available_days: d.available_days,
     available_slots: d.available_slots
   };
-  if (testMode) { console.log("[測試模式] 不送出，資料如下", row); return; }
-  var res = await fetch(CONFIG.SUPABASE_URL + "/rest/v1/" + CONFIG.TABLE, {
+  var res = await fetch(CONFIG.ENDPOINT, {
     method: "POST",
-    headers: {
-      "apikey": CONFIG.SUPABASE_ANON_KEY,
-      "Authorization": "Bearer " + CONFIG.SUPABASE_ANON_KEY,
-      "Content-Type": "application/json",
-      "Prefer": "return=minimal"
-    },
-    body: JSON.stringify(row)
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
   });
   if (!res.ok) throw new Error("save failed " + res.status);
 }
@@ -258,7 +248,7 @@ $("form").addEventListener("submit", async function (ev) {
   } catch (e) {
     $("formErr").textContent = "送出失敗，請稍後再試一次。";
     $("formErr").hidden = false;
-    btn.disabled = false; btn.textContent = "送出綁定";
+    btn.disabled = false; btn.textContent = "送出資料";
   }
 });
 
