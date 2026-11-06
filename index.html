@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>車行綁定表單</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap">
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<style>
+:root {
+  --bg: #F2F6F3; --surface: #FFFFFF; --ink: #10201A; --muted: #53655E; --line: #CFDAD4;
+  --accent: #06C755; --on-accent: #04210F; --accent-text: #057A3A; --danger: #B4382B; --tint: #E4F3EA;
+  --head-bg: #0B2419; --head-fg: #F1F8F4; --head-muted: #A9C4B6;
+  --font: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", "Heiti TC", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #0A1410; --surface: #12211B; --ink: #E7F0EB; --muted: #9AB0A7; --line: #2B433A;
+          --accent-text: #43DD87; --danger: #FF8F82; --tint: #16352A; --head-bg: #071A11; color-scheme: dark; }
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 16px; line-height: 1.6; }
+.head { background: var(--head-bg); color: var(--head-fg); padding: calc(22px + env(safe-area-inset-top, 0px)) 20px 22px; }
+.head small { display: block; font-size: 12px; font-weight: 700; letter-spacing: .12em; color: var(--accent); }
+.head h1 { margin: 4px 0 0; font-size: 26px; font-weight: 900; line-height: 1.3; }
+.head p { margin: 8px 0 0; font-size: 14.5px; color: var(--head-muted); }
+main { max-width: 520px; margin: 0 auto; padding: 18px 16px calc(32px + env(safe-area-inset-bottom, 0px)); }
+.notice { border-radius: 10px; padding: 12px 14px; font-size: 14.5px; margin-bottom: 14px; }
+.notice.friend { background: var(--tint); border: 1px solid var(--accent); }
+.notice.friend a { color: var(--accent-text); font-weight: 700; }
+.notice.test { background: #FFC21A; color: #2E2300; font-weight: 700; }
+form { display: grid; gap: 18px; }
+.field { display: grid; gap: 6px; }
+label, .legend { font-weight: 700; font-size: 15px; }
+.req { color: var(--danger); margin-left: 2px; }
+input[type="text"], input[type="tel"] {
+  width: 100%; min-height: 50px; padding: 10px 14px; border: 1.5px solid var(--line); border-radius: 10px;
+  background: var(--surface); color: var(--ink); font: inherit; font-size: 16px;
+}
+input:focus-visible { outline: 3px solid var(--accent); outline-offset: 1px; border-color: transparent; }
+.field.bad input { border-color: var(--danger); }
+.err { color: var(--danger); font-size: 13.5px; min-height: 0; margin: 0; }
+.err:empty { display: none; }
+.hint { font-size: 13px; color: var(--muted); margin: 0; }
+fieldset { border: 0; padding: 0; margin: 0; display: grid; gap: 8px; min-width: 0; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { position: relative; }
+.chip input { position: absolute; opacity: 0; inset: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+.chip span {
+  display: inline-flex; align-items: center; min-height: 48px; padding: 8px 22px; border: 1.5px solid var(--line);
+  border-radius: 999px; background: var(--surface); font-weight: 500; min-width: 88px; justify-content: center;
+}
+.chip input:checked + span { background: var(--accent); color: var(--on-accent); border-color: var(--accent); font-weight: 700; }
+.chip input:focus-visible + span { outline: 3px solid var(--accent); outline-offset: 2px; }
+.field.bad .chip span { border-color: var(--danger); }
+.submit {
+  min-height: 54px; border: 0; border-radius: 12px; background: var(--accent); color: var(--on-accent);
+  font: inherit; font-size: 18px; font-weight: 900; cursor: pointer; margin-top: 4px;
+}
+.submit[disabled] { opacity: .6; cursor: default; }
+.formerr { color: var(--danger); font-weight: 700; margin: 0; }
+.done { text-align: center; padding: 36px 8px; }
+.done .ok { width: 64px; height: 64px; border-radius: 50%; background: var(--accent); margin: 0 auto 16px; display: grid; place-items: center; }
+.done h2 { margin: 0 0 8px; font-size: 24px; font-weight: 900; }
+.done p { margin: 0 0 20px; color: var(--muted); }
+.done .submit { width: 100%; }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<header class="head">
+  <small>商會車行專案</small>
+  <h1>車行綁定表單</h1>
+  <p>填完資料就完成綁定，我會依你填的時間聯絡你。</p>
+</header>
+
+<main>
+  <div id="friendNotice" class="notice friend" hidden>
+    你還沒加入官方 LINE 好友。請先<a href="https://lin.ee/u7xBfmS">加我好友</a>，再回來填表單。
+  </div>
+  <div id="testNotice" class="notice test" hidden></div>
+
+  <form id="form" novalidate>
+    <div class="field" data-f="shop_name">
+      <label for="shop_name">車行名稱<span class="req">*</span></label>
+      <input type="text" id="shop_name" name="shop_name" autocomplete="organization" maxlength="60">
+      <p class="err"></p>
+    </div>
+    <div class="field" data-f="contact_name">
+      <label for="contact_name">負責官 LINE 窗口姓名<span class="req">*</span></label>
+      <input type="text" id="contact_name" name="contact_name" autocomplete="name" maxlength="30">
+      <p class="err"></p>
+    </div>
+    <div class="field" data-f="mobile">
+      <label for="mobile">手機<span class="req">*</span></label>
+      <input type="tel" id="mobile" name="mobile" inputmode="numeric" autocomplete="tel" placeholder="0912345678" maxlength="12">
+      <p class="err"></p>
+    </div>
+    <div class="field" data-f="address">
+      <label for="address">地址<span class="req">*</span></label>
+      <input type="text" id="address" name="address" autocomplete="street-address" maxlength="120">
+      <p class="err"></p>
+    </div>
+    <div class="field" data-f="phone">
+      <label for="phone">電話<span class="req">*</span></label>
+      <input type="tel" id="phone" name="phone" inputmode="tel" placeholder="02-12345678" maxlength="20">
+      <p class="err"></p>
+    </div>
+
+    <fieldset class="field" data-f="days">
+      <legend class="legend">可預約日期<span class="req">*</span></legend>
+      <div class="chips">
+        <label class="chip"><input type="checkbox" name="days" value="平日"><span>平日</span></label>
+        <label class="chip"><input type="checkbox" name="days" value="假日"><span>假日</span></label>
+      </div>
+      <p class="err"></p>
+    </fieldset>
+    <fieldset class="field" data-f="slots">
+      <legend class="legend">可預約時段<span class="req">*</span></legend>
+      <div class="chips">
+        <label class="chip"><input type="checkbox" name="slots" value="早上"><span>早上</span></label>
+        <label class="chip"><input type="checkbox" name="slots" value="中午"><span>中午</span></label>
+      </div>
+      <p class="hint">可複選。</p>
+      <p class="err"></p>
+    </fieldset>
+
+    <p id="formErr" class="formerr" hidden></p>
+    <button type="submit" id="submitBtn" class="submit">送出綁定</button>
+  </form>
+
+  <section id="done" class="done" hidden>
+    <div class="ok" aria-hidden="true">
+      <svg width="34" height="34" viewBox="0 0 34 34"><path d="M8 17.5l6 6 12-13" fill="none" stroke="#04210F" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <h2>綁定完成</h2>
+    <p>資料已送出，我會依你填的時間聯絡你。</p>
+    <button type="button" id="closeBtn" class="submit">關閉視窗</button>
+  </section>
+</main>
+
+<script>
+/* ============ 設定區：做好 LIFF 與 Supabase 後，只要改這裡 ============ */
+var CONFIG = {
+  LIFF_ID: "YOUR_LIFF_ID",                 // LINE Developers 的 LIFF ID
+  SUPABASE_URL: "",                        // 例：https://xxxx.supabase.co （留空 = 測試模式，不會送出資料）
+  SUPABASE_ANON_KEY: "",                   // 只放 anon（publishable）key，絕對不要放 service_role key
+  TABLE: "shop_bindings"                   // 要寫入的資料表名稱
+};
+/* ===================================================================== */
+
+var profile = { userId: "", displayName: "" };
+var testMode = !CONFIG.SUPABASE_URL || !CONFIG.SUPABASE_ANON_KEY;
+var previewMode = CONFIG.LIFF_ID === "YOUR_LIFF_ID";
+
+function $(id) { return document.getElementById(id); }
+
+function showNotice(el, text) { el.textContent = text; el.hidden = false; }
+
+async function start() {
+  if (previewMode) {
+    profile = { userId: "U_preview", displayName: "預覽用戶" };
+    showNotice($("testNotice"), "預覽模式：尚未設定 LIFF ID，送出的資料不會儲存。");
+    return;
+  }
+  try {
+    await liff.init({ liffId: CONFIG.LIFF_ID });
+    if (!liff.isLoggedIn()) { liff.login(); return; }
+    var p = await liff.getProfile();
+    profile = { userId: p.userId, displayName: p.displayName };
+    try {
+      var fr = await liff.getFriendship();
+      if (!fr.friendFlag) $("friendNotice").hidden = false;
+    } catch (e) { /* 沒連結官方帳號時取不到，略過 */ }
+  } catch (e) {
+    $("formErr").textContent = "LINE 登入失敗，請從官方 LINE 的訊息重新開啟表單。";
+    $("formErr").hidden = false;
+  }
+  if (testMode) showNotice($("testNotice"), "測試模式：尚未設定 Supabase，送出的資料不會儲存。");
+}
+
+function setErr(name, msg) {
+  var f = document.querySelector('[data-f="' + name + '"]');
+  f.classList.toggle("bad", !!msg);
+  f.querySelector(".err").textContent = msg || "";
+  return !msg;
+}
+
+function collect() {
+  var fd = new FormData($("form"));
+  return {
+    shop_name: (fd.get("shop_name") || "").trim(),
+    contact_name: (fd.get("contact_name") || "").trim(),
+    mobile: (fd.get("mobile") || "").replace(/[\s-]/g, ""),
+    address: (fd.get("address") || "").trim(),
+    phone: (fd.get("phone") || "").trim(),
+    available_days: fd.getAll("days"),
+    available_slots: fd.getAll("slots")
+  };
+}
+
+function validate(d) {
+  var ok = true;
+  ok = setErr("shop_name", d.shop_name ? "" : "請填車行名稱") && ok;
+  ok = setErr("contact_name", d.contact_name ? "" : "請填窗口姓名") && ok;
+  ok = setErr("mobile", /^09\d{8}$/.test(d.mobile) ? "" : "請填 10 碼手機，例如 0912345678") && ok;
+  ok = setErr("address", d.address ? "" : "請填車行地址") && ok;
+  ok = setErr("phone", /^[0-9()\-\s#+]{7,20}$/.test(d.phone) ? "" : "請填店裡電話，例如 02-12345678") && ok;
+  ok = setErr("days", d.available_days.length ? "" : "請至少選一個日期") && ok;
+  ok = setErr("slots", d.available_slots.length ? "" : "請至少選一個時段") && ok;
+  return ok;
+}
+
+async function save(d) {
+  var row = {
+    line_user_id: profile.userId,
+    line_display_name: profile.displayName,
+    shop_name: d.shop_name,
+    contact_name: d.contact_name,
+    mobile: d.mobile,
+    address: d.address,
+    phone: d.phone,
+    available_days: d.available_days,
+    available_slots: d.available_slots
+  };
+  if (testMode) { console.log("[測試模式] 不送出，資料如下", row); return; }
+  var res = await fetch(CONFIG.SUPABASE_URL + "/rest/v1/" + CONFIG.TABLE, {
+    method: "POST",
+    headers: {
+      "apikey": CONFIG.SUPABASE_ANON_KEY,
+      "Authorization": "Bearer " + CONFIG.SUPABASE_ANON_KEY,
+      "Content-Type": "application/json",
+      "Prefer": "return=minimal"
+    },
+    body: JSON.stringify(row)
+  });
+  if (!res.ok) throw new Error("save failed " + res.status);
+}
+
+$("form").addEventListener("submit", async function (ev) {
+  ev.preventDefault();
+  var d = collect();
+  $("formErr").hidden = true;
+  if (!validate(d)) {
+    var bad = document.querySelector(".field.bad");
+    if (bad) bad.scrollIntoView({ block: "center", behavior: "smooth" });
+    return;
+  }
+  var btn = $("submitBtn");
+  btn.disabled = true; btn.textContent = "送出中…";
+  try {
+    await save(d);
+    $("form").hidden = true;
+    $("friendNotice").hidden = true;
+    $("done").hidden = false;
+    window.scrollTo(0, 0);
+  } catch (e) {
+    $("formErr").textContent = "送出失敗，請稍後再試一次。";
+    $("formErr").hidden = false;
+    btn.disabled = false; btn.textContent = "送出綁定";
+  }
+});
+
+$("closeBtn").addEventListener("click", function () {
+  if (!previewMode && liff.isInClient()) liff.closeWindow(); else window.close();
+});
+
+start();
+</script>
+</body>
+</html>
